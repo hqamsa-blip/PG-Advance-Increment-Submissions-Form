@@ -313,6 +313,29 @@
   }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #333;
+    color: #fff;
+    padding: 14px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    z-index: 1000;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    line-height: 1.4;
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
   /* ── Success screen ── */
   .success-screen {
     display: none;
@@ -381,6 +404,8 @@
 </style>
 </head>
 <body>
+
+<div id="toast" class="toast"></div>
 
 <header class="site-header">
   <div class="header-top">
@@ -621,6 +646,7 @@
   <!-- ══ Footer nav ══ -->
   <div class="form-footer" id="formFooter">
     <button class="btn btn-back" id="btnBack" onclick="goStep(currentStep - 1)" style="visibility:hidden">← Back</button>
+    <button class="btn" id="btnDraft" onclick="saveDraft()" style="background:var(--blue-lt); color:var(--blue); font-size:12px; padding:6px 14px;">Save Draft</button>
     <span class="step-count" id="stepCount">Step 1 of 4</span>
     <button class="btn btn-next" id="btnNext" onclick="nextStep()">Next →</button>
   </div>
@@ -671,6 +697,52 @@
     if(n === 4) populateReview();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.innerHTML = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 5000);
+  }
+
+  function saveDraft() {
+    const data = {
+      district: val("district"), doctorName: val("doctorName"),
+      designation: val("designation"), posting: val("posting"),
+      email: val("email"), mobile: val("mobile"),
+      joiningDate: val("joiningDate"), pgBeforeAfter: val("pgBeforeAfter"),
+      designationBeforePG: val("designationBeforePG"),
+      payBeforePG: val("payBeforePG"), gradePayBeforePG: val("gradePayBeforePG"),
+      daBeforePG: val("daBeforePG"), hraBeforePG: val("hraBeforePG"),
+      pgDegree: val("pgDegree"), pgDiplomaNMC: val("pgDiplomaNMC"),
+      institution: val("institution"), studyLeave: val("studyLeave"),
+      releaseDate: val("releaseDate"), incrementsDuringStudy: val("incrementsDuringStudy"),
+      rejoiningDate: val("rejoiningDate"), designationRejoining: val("designationRejoining"),
+      payRejoining: val("payRejoining"), gradePayRejoining: val("gradePayRejoining"),
+      daRejoining: val("daRejoining"), hraRejoining: val("hraRejoining"),
+      currentPay: val("currentPay"), currentGradePay: val("currentGradePay"),
+      currentDA: val("currentDA"), currentHRA: val("currentHRA"),
+      npa: val("npa"), dpPending: val("dpPending"),
+      dpDetails: val("dpDetails"), remarks: val("remarks")
+    };
+    localStorage.setItem("advance_increment_draft", JSON.stringify(data));
+    showToast("Draft saved successfully!<br><small style='color:#f1c40f'>Note: You must re-attach your Payslip files when resuming.</small>");
+  }
+
+  function loadDraft() {
+    const saved = localStorage.getItem("advance_increment_draft");
+    if(saved) {
+      try {
+        const d = JSON.parse(saved);
+        Object.keys(d).forEach(k => {
+          const el = document.getElementById(k);
+          if(el && el.type !== "file") el.value = d[k];
+        });
+      } catch(e) {}
+    }
+  }
+
+  window.onload = loadDraft;
 
   function updateNav() {
     document.getElementById("stepCount").textContent = "Step " + currentStep + " of " + totalSteps;
@@ -836,7 +908,8 @@
     .then(r => r.json())
     .then(data => {
       if (data.result === "success") {
-        showSuccess();
+        localStorage.removeItem("advance_increment_draft");
+        showSuccess(data.refNo);
       } else {
         throw new Error(data.message || "Unknown error");
       }
@@ -849,12 +922,11 @@
     });
   }
 
-  function showSuccess() {
+  function showSuccess(serverRef) {
     document.querySelectorAll(".step-panel").forEach(p => p.style.display = "none");
     document.getElementById("formFooter").style.display = "none";
     document.getElementById("stepBar").style.display = "none";
-    const ref = "AI-" + Date.now().toString(36).toUpperCase().slice(-6);
-    document.getElementById("refNo").textContent = "Reference: " + ref;
+    document.getElementById("refNo").textContent = "Reference: " + serverRef;
     document.getElementById("successScreen").style.display = "block";
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
